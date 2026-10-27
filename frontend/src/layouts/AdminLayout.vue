@@ -30,7 +30,7 @@ async function salir () {
 
     <v-spacer />
 
-    <v-chip class="mr-3" prepend-icon="mdi-account-circle-outline">
+    <v-chip class="mr-3" prepend-icon="mdi-shield-account">
       {{ usuario?.nombre }}
     </v-chip>
 
@@ -49,8 +49,22 @@ async function salir () {
       <v-list-item
         prepend-icon="mdi-account-group"
         title="Jugadores"
-        to="/admin"
-        exact
+        to="/admin/jugadores"
+      />
+      <v-list-item
+        prepend-icon="mdi-account-multiple"
+        title="Rosters"
+        to="/admin/rosters"
+      />
+    </v-list>
+
+    <v-divider class="my-2" />
+
+    <v-list nav>
+      <v-list-item
+        prepend-icon="mdi-eye-outline"
+        title="Ver vista pública"
+        to="/consulta/jugadores"
       />
     </v-list>
 

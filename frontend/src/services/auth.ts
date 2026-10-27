@@ -32,3 +32,8 @@ export async function obtenerSesion (): Promise<Usuario> {
 
   return data.usuario
 }
+
+// La cookie CSRF es legible; si no existe, no hay sesión que consultar.
+export function haySesionGuardada (): boolean {
+  return document.cookie.split('; ').some((cookie) => cookie.startsWith('csrf_token='))
+}

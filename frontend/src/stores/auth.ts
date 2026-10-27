@@ -31,6 +31,11 @@ export function useAuth () {
     }
   }
 
+  // Limpia solo el estado local. Se usa cuando el backend responde 401.
+  function limpiarSesionLocal () {
+    usuario.value = null
+  }
+
   /**
    * Al recargar la página se perdió el estado en memoria, pero la cookie JWT
    * sigue ahí. Esta llamada la valida contra el backend.
@@ -38,6 +43,13 @@ export function useAuth () {
   async function restaurarSesion () {
     // Solo se consulta una vez por carga de página.
     if (inicializado.value) return
+
+    // Sin cookie CSRF no hay sesión que validar.
+    if (!authApi.haySesionGuardada()) {
+      usuario.value = null
+      inicializado.value = true
+      return
+    }
 
     try {
       usuario.value = await authApi.obtenerSesion()
@@ -53,6 +65,7 @@ export function useAuth () {
     esAdmin,
     iniciarSesion,
     cerrarSesion,
+    limpiarSesionLocal,
     restaurarSesion,
   }
 }

@@ -1,74 +1,34 @@
-# Meta 3.4 — Autorización de servicios (avance 1)
+# Meta 3.4 — Gestión de jugadores y rosters con JWT, cookies y CSRF
 
-Avance mínimo de la aplicación de **jugadores y rosters** con:
+Aplicación completa de **jugadores y rosters** con frontend Vue 3 + Vuetify y
+backend Node.js + Express + Sequelize + MySQL.
 
-- **Backend** (Node.js + Express + Sequelize + MySQL) con login por
-  credenciales, **JWT en cookie HttpOnly**, **token CSRF** y autorización por
-  rol.
-- **Frontend** (Vue 3 + Vuetify + TypeScript) con pantalla de login y panel
-  **Admin** para listar y crear jugadores.
+Incluye:
 
-El objetivo de este avance no es cubrir toda la meta, sino tener una rebanada
-vertical funcionando de punta a punta: iniciar sesión, entrar al panel,
-consumir la API con cookies y demostrar que una escritura sin token CSRF se
-rechaza.
-
----
-
-## 1. Qué se puede probar
-
-| Acción | Resultado esperado |
-|--------|--------------------|
-| Entrar a `http://localhost:5173` sin sesión | Redirige a `/login` |
-| Login con la cuenta Admin | Entra al panel y lista los jugadores |
-| Crear un jugador | Se guarda y aparece en la tabla |
-| Cerrar sesión | Vuelve al login y las cookies se eliminan |
-| Login con la cuenta Público | El panel la rechaza (no tiene rol Admin) |
-| `POST /api/v1/jugadores` sin sesión | `401 Unauthorized` |
-| `POST` con sesión pero sin `x-csrf-token` | `403 Forbidden` |
-| `POST` con sesión y token CSRF | `201 Created` |
-
-### Cuentas de prueba
-
-| Rol | Correo | Contraseña |
-|-----|--------|------------|
-| Admin | `admin@esports.local` | `Admin123!` |
-| Público | `publico@esports.local` | `Publico123!` |
+- CRUD de jugadores con detalle, búsqueda y filtros.
+- CRUD de rosters.
+- Asignación de jugadores a rosters como **Titular** o **Suplente**, cambio de
+  condición y remoción.
+- Autenticación con **JWT en cookie HttpOnly**.
+- Autorización por roles **Admin** y **Público**.
+- Protección **CSRF** con doble envío de token.
+- Vistas de solo lectura para el rol Público y para visitantes sin sesión.
 
 ---
 
-## 2. Estructura
+## 1. Cuentas de prueba
 
-```text
-Meta3.4/
-├── backend/
-│   ├── src/
-│   │   ├── controllers/auth.controller.js   # login, logout, me
-│   │   ├── services/auth.service.js         # validación de credenciales
-│   │   ├── middlewares/auth.middleware.js   # JWT + CSRF + rol Admin
-│   │   ├── routes/auth.routes.js            # /api/v1/auth
-│   │   ├── models/usuario.model.js
-│   │   └── ... (código de jugadores y rosters de Meta 3.2)
-│   ├── migrations/20261027090000-create-usuarios.js
-│   ├── seeders/20261027100000-datos-usuarios.js
-│   └── .env.example
-└── frontend/
-    ├── src/
-    │   ├── services/api.ts                  # axios + cookie CSRF
-    │   ├── services/auth.ts
-    │   ├── stores/auth.ts                   # estado de sesión
-    │   ├── router/index.ts                  # guard de Admin
-    │   └── views/
-    │       ├── LoginView.vue
-    │       └── admin/
-    │           ├── AdminLayout.vue
-    │           └── JugadoresView.vue
-    └── .env.example
-```
+| Rol | Correo | Contraseña | Acceso |
+|-----|--------|------------|--------|
+| Admin | `admin@esports.local` | `Admin123!` | CRUD completo |
+| Público | `publico@esports.local` | `Publico123!` | Solo lectura |
+
+Los visitantes sin sesión también pueden consultar jugadores y rosters, porque
+las lecturas de la API son públicas. Las escrituras siempre exigen Admin.
 
 ---
 
-## 3. Cómo ejecutarlo
+## 2. Cómo ejecutarlo
 
 ### Requisitos
 
@@ -80,9 +40,9 @@ Meta3.4/
 ```bash
 cd backend
 npm install
-cp .env.example .env     # en PowerShell: Copy-Item .env.example .env
+cp .env.example .env     # PowerShell: Copy-Item .env.example .env
 npm run migrate
-npm run seed             # solo la primera vez; crea usuarios y datos de ejemplo
+npm run seed             # solo la primera vez
 npm run dev
 ```
 
@@ -94,7 +54,7 @@ npm run dev
 > npx sequelize-cli db:seed --seed 20261027100000-datos-usuarios.js
 > ```
 
-El backend queda en `http://localhost:3000`.
+Backend: `http://localhost:3000`
 
 ### Frontend
 
@@ -105,135 +65,225 @@ cp .env.example .env
 npm run dev
 ```
 
-El frontend queda en `http://localhost:5173`.
+Frontend: `http://localhost:5173`
+
+### Prueba de humo del backend
+
+Con el backend corriendo:
+
+```bash
+node tools/e2e.mjs
+```
+
+Cubre 37 escenarios: login, filtros, CRUD de jugadores, CRUD de rosters,
+asignaciones, reglas RN-02/RN-03/RN-04, permisos de Público y CSRF.
 
 ---
 
-## 4. Cómo funciona la seguridad
+## 3. Rutas del frontend
 
-### 4.1 Login y cookies
+| Ruta | Acceso | Contenido |
+|------|--------|-----------|
+| `/` | Público | Redirige a `/consulta/jugadores` |
+| `/login` | Público | Inicio de sesión |
+| `/consulta/jugadores` | Público | Lista, búsqueda y detalle de jugadores |
+| `/consulta/rosters` | Público | Lista y detalle de rosters |
+| `/consulta/rosters/:id` | Público | Jugadores del roster en solo lectura |
+| `/admin/jugadores` | Admin | CRUD de jugadores |
+| `/admin/rosters` | Admin | CRUD de rosters |
+| `/admin/rosters/:id` | Admin | Asignaciones Titular/Suplente |
 
-```text
-POST /api/v1/auth/login  { email, password }
-        │
-        ▼
-  bcrypt.compare(password, password_hash)
-        │
-        ├── cookie jwt_token   → HttpOnly, SameSite=Strict
-        └── cookie csrf_token  → legible por JavaScript
-        │
-        ▼
-  { usuario, csrfToken }
-```
-
-- El **JWT** viaja en una cookie `HttpOnly`: JavaScript no puede leerlo, así
-  que un XSS no puede robarlo.
-- El **token CSRF** viaja en una cookie normal y también dentro del JWT. El
-  frontend lo lee de la cookie y lo copia a la cabecera `x-csrf-token`.
-
-### 4.2 Escrituras protegidas
-
-```text
-POST /api/v1/jugadores
-  Cookie: jwt_token=...
-  x-csrf-token: ...
-
-        │
-        ▼
-  autenticar()
-    1. verifica la firma y vigencia del JWT
-    2. compara el header x-csrf-token con el token guardado en el JWT
-        │
-        ▼
-  soloAdmin()
-    3. exige rol === 'admin'
-        │
-        ▼
-  controlador → service → MySQL
-```
-
-¿Por qué funciona contra CSRF? Otro sitio puede hacer que el navegador envíe
-la cookie `jwt_token`, pero **no puede leer** la cookie `csrf_token` ni el
-cuerpo del JWT por la política de mismo origen, así que no puede construir la
-cabecera correcta.
-
-### 4.3 CORS con credenciales
-
-El backend usa:
-
-```js
-cors({
-  origin: process.env.CLIENT_URL, // http://localhost:5173
-  credentials: true,
-})
-```
-
-Con cookies no se puede usar `origin: '*'`. El frontend usa
-`withCredentials: true` en axios para enviar y recibir las cookies.
-
-### 4.4 Matriz de permisos
-
-| Operación | Público | Admin |
-|-----------|:-------:|:-----:|
-| `GET` jugadores / rosters | Sí | Sí |
-| `POST`, `PUT`, `DELETE` | No | Sí |
-
-La lectura quedó pública para conservar el comportamiento de Meta 3.2. Las
-escrituras están protegidas en `jugadores`, `rosters` y `asignaciones`.
+El guard de Vue Router impide entrar a `/admin` sin una sesión con rol
+`admin`. La seguridad real, de todas formas, está en el backend.
 
 ---
 
-## 5. Endpoints de autenticación
+## 4. Funcionalidades del frontend
+
+### Jugadores
+
+- Listar (RF-02).
+- Ver detalle consultando `GET /jugadores/:id` (RF-03).
+- Crear (RF-01).
+- Editar con reemplazo total (RF-04).
+- Eliminar (RF-05).
+- Buscar por nickname y filtrar por rol y estado (RF-06).
+- Mensajes específicos para `400`, `401`, `403`, `404`, `409` y errores de red.
+
+### Rosters
+
+- Listar con filtros por tipo y temporada.
+- Crear, editar y eliminar.
+- Ver detalle con los jugadores asignados.
+- Asignar jugadores como Titular o Suplente.
+- Cambiar la condición de un jugador.
+- Quitar un jugador del roster sin eliminarlo del sistema.
+
+### Reglas de negocio mostradas en la interfaz
+
+| Regla | Comportamiento |
+|-------|----------------|
+| RN-01 | Nickname único: el `409` se muestra al usuario |
+| RN-02 | Máximo 5 titulares: el `409` explica el límite |
+| RN-03 | Un titular por rol de juego: el `409` indica el conflicto |
+| RN-04 | Un jugador puede estar en varios rosters |
+| RN-05 | Al borrar un roster, los jugadores permanecen |
+| — | Un jugador asignado no puede eliminarse: `409` |
+
+---
+
+## 5. API del backend
+
+### Autenticación
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
 | `POST` | `/api/v1/auth/login` | Valida credenciales y crea las cookies |
-| `POST` | `/api/v1/auth/logout` | Elimina las cookies (requiere JWT + CSRF) |
+| `POST` | `/api/v1/auth/logout` | Elimina las cookies (JWT + CSRF) |
 | `GET` | `/api/v1/auth/me` | Devuelve el usuario de la sesión |
 
-### Prueba rápida con curl
+### Jugadores
 
-```bash
-# Login y guardar cookies
-curl -c cookies.txt -X POST http://localhost:3000/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"email\":\"admin@esports.local\",\"password\":\"Admin123!\"}"
+| Método | Endpoint | Acceso |
+|--------|----------|--------|
+| `GET` | `/api/v1/jugadores` | Público; admite `?rol`, `?estado`, `?search` |
+| `GET` | `/api/v1/jugadores/:id` | Público |
+| `POST` | `/api/v1/jugadores` | Admin |
+| `PUT` | `/api/v1/jugadores/:id` | Admin |
+| `DELETE` | `/api/v1/jugadores/:id` | Admin |
 
-# Sin CSRF → 403
-curl -b cookies.txt -X POST http://localhost:3000/api/v1/jugadores \
-  -H "Content-Type: application/json" \
-  -d "{\"nickname\":\"Prueba\",\"rol\":\"Mid\"}"
+### Rosters
 
-# Con CSRF (usa el csrfToken que devolvió el login) → 201
-curl -b cookies.txt -X POST http://localhost:3000/api/v1/jugadores \
-  -H "Content-Type: application/json" \
-  -H "x-csrf-token: TOKEN_AQUI" \
-  -d "{\"nickname\":\"Prueba\",\"rol\":\"Mid\"}"
+| Método | Endpoint | Acceso |
+|--------|----------|--------|
+| `GET` | `/api/v1/rosters` | Público; admite `?tipo`, `?temporada` |
+| `GET` | `/api/v1/rosters/:id` | Público |
+| `POST` | `/api/v1/rosters` | Admin |
+| `PUT` | `/api/v1/rosters/:id` | Admin |
+| `DELETE` | `/api/v1/rosters/:id` | Admin |
+
+### Asignaciones
+
+| Método | Endpoint | Acceso |
+|--------|----------|--------|
+| `GET` | `/api/v1/rosters/:id/jugadores` | Público |
+| `POST` | `/api/v1/rosters/:id/jugadores` | Admin |
+| `PUT` | `/api/v1/rosters/:id/jugadores/:id_jugador` | Admin |
+| `DELETE` | `/api/v1/rosters/:id/jugadores/:id_jugador` | Admin |
+
+### Auxiliares
+
+`GET /api/v1/roles`, `/estados`, `/tipos-roster` y `/health`.
+
+---
+
+## 6. Autenticación y autorización
+
+### Login
+
+1. El frontend envía email y contraseña a `POST /auth/login`.
+2. El backend compara con bcrypt contra `usuarios.password_hash`.
+3. Si es correcto, firma un JWT con `sub`, `nombre`, `email`, `rol` y `csrf`.
+4. Responde con dos cookies:
+
+| Cookie | HttpOnly | Uso |
+|--------|:--------:|-----|
+| `jwt_token` | Sí | Identifica la sesión; JavaScript no la lee |
+| `csrf_token` | No | El frontend la lee para la cabecera CSRF |
+
+Atributos: `Path=/`, `SameSite=Strict`, `Max-Age=3600000` y `Secure` en
+producción.
+
+### Autorización
+
+- `autenticar` valida el JWT y, en métodos inseguros, el token CSRF.
+- `soloAdmin` exige `rol === 'admin'`.
+- Las lecturas son públicas; las escrituras exigen Admin.
+- El frontend usa guards y oculta acciones, pero el backend siempre vuelve a
+  validar.
+
+### Códigos de estado
+
+| Código | Uso |
+|--------|-----|
+| `200` | Lectura, login, actualización |
+| `201` | Creación de jugador, roster o asignación |
+| `204` | Eliminación correcta |
+| `400` | Datos inválidos o filtros incorrectos |
+| `401` | Sin sesión, JWT inválido o expirado |
+| `403` | Token CSRF inválido o rol insuficiente |
+| `404` | Recurso inexistente |
+| `409` | Regla de negocio: nickname repetido, 6.º titular, rol duplicado, jugador asignado |
+| `413` | Cuerpo mayor a 100 KB |
+| `500` | Error interno no controlado |
+
+### Expiración de sesión
+
+Si una petición de datos devuelve `401`, el frontend limpia el estado local y,
+si estaba en `/admin`, redirige al login.
+
+---
+
+## 7. Protección CSRF
+
+Se usa el patrón **double submit cookie**:
+
+1. El backend genera un token aleatorio en el login.
+2. Lo guarda en la cookie `csrf_token` y dentro del JWT firmado.
+3. El interceptor de axios lee la cookie y envía la cabecera `x-csrf-token` en
+   cada `POST`, `PUT`, `PATCH` y `DELETE`.
+4. El backend compara la cabecera contra el valor firmado en el JWT.
+
+Un sitio externo puede provocar que el navegador envíe la cookie JWT, pero no
+puede leer la cookie CSRF ni el JWT para construir la cabecera. Además,
+`SameSite=Strict` y el CORS con origen exacto agregan capas de protección.
+
+CORS usa `origin: CLIENT_URL` y `credentials: true`; no se puede usar `*` con
+cookies.
+
+---
+
+## 8. Estructura
+
+```text
+Meta3.4/
+├── backend/
+│   ├── src/
+│   │   ├── controllers/       # auth, jugadores, rosters, asignaciones
+│   │   ├── services/          # reglas de negocio
+│   │   ├── middlewares/       # auth.middleware, errorHandler, notFound
+│   │   ├── models/            # Sequelize (incluye Usuario)
+│   │   ├── routes/            # endpoints y protección por rol
+│   │   └── utils/             # ApiError, validaciones, serialización
+│   ├── migrations/            # tablas, incluida usuarios
+│   ├── seeders/               # datos iniciales y cuentas
+│   └── .env.example
+├── frontend/
+│   └── src/
+│       ├── components/        # MensajeError, ConfirmarDialog
+│       ├── composables/       # useErrores
+│       ├── layouts/           # AdminLayout, ConsultaLayout
+│       ├── router/            # rutas y guard de Admin
+│       ├── services/          # axios, auth, jugadores, rosters, errores
+│       ├── stores/            # estado de sesión
+│       ├── views/             # Login, Jugadores, Rosters, RosterDetail
+│       └── utils/             # catálogos
+├── tools/e2e.mjs              # prueba de humo del backend
+└── README.md
 ```
 
 ---
 
-## 6. Decisiones de este avance
+## 9. Decisiones y límites
 
-- **Se reutiliza el backend de Meta 3.2** en lugar de reescribirlo. Se agregó
-  el módulo de autenticación y se protegieron las rutas de escritura.
-- **No se usa API key en el login** como en el ejemplo de Meta 3.3. Una API
-  key dentro de una aplicación web pública no es secreta: cualquiera puede
-  verla en el bundle. Las credenciales de usuario la sustituyen.
-- **Sin Pinia ni librería de estado**: un módulo con `ref` es suficiente para
-  este alcance.
-- **`SameSite=Strict`** en las cookies. En desarrollo, `localhost:5173` y
-  `localhost:3000` cuentan como el mismo sitio, así que las cookies viajan
-  correctamente.
-
----
-
-## 7. Pendientes para completar la Meta 3.4
-
-- [ ] CRUD completo de rosters y asignaciones en el panel Admin.
-- [ ] Editar y eliminar jugadores desde el frontend.
-- [ ] Pantalla o modo de solo lectura para el rol Público.
-- [ ] Actualizar la documentación OpenAPI con los endpoints de auth.
-- [ ] Pruebas automatizadas del flujo de autenticación y CSRF.
-- [ ] Publicar el repositorio en GitHub (backend + frontend).
-- [ ] Variables de entorno de producción, HTTPS y `secure: true` en cookies.
+- Se reutiliza el backend de Meta 3.2 y se le agregó el módulo de usuarios y
+  autenticación.
+- No se usa API key en el login: una clave dentro del frontend no es secreta.
+  Las credenciales de usuario la sustituyen.
+- No hay refresh token; la sesión dura 1 hora.
+- Logout borra las cookies, pero un JWT copiado seguiría válido hasta `exp`.
+- No hay rate limiting ni bloqueo por intentos fallidos.
+- El login no está protegido contra login CSRF.
+- En producción se debe usar HTTPS, `Secure` en cookies y secretos fuertes.
+- Las lecturas de la API son públicas por diseño; las escrituras son solo
+  Admin.

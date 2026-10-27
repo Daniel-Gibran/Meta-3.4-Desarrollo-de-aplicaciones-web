@@ -42,4 +42,20 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status
+    const url = error.config?.url ?? ''
+    const esRutaDeSesion = url.includes('/auth/login') || url.includes('/auth/me')
+
+    // Si una petición de datos responde 401, la sesión dejó de ser válida.
+    if (status === 401 && !esRutaDeSesion) {
+      window.dispatchEvent(new CustomEvent('auth:expirado'))
+    }
+
+    return Promise.reject(error)
+  },
+)
+
 export default api

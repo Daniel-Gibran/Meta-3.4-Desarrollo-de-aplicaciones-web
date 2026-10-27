@@ -7,7 +7,7 @@ import { useAuth } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
-const { esAdmin, iniciarSesion, cerrarSesion } = useAuth()
+const { esAdmin, iniciarSesion } = useAuth()
 
 // Datos del formulario y estado de la petición.
 const email = ref('admin@esports.local')
@@ -31,17 +31,14 @@ async function enviar () {
   try {
     await iniciarSesion(email.value, password.value)
 
-    // El backend autentica a cualquier usuario, pero el panel es solo Admin.
-    if (!esAdmin.value) {
-      await cerrarSesion()
-      error.value = 'Esta cuenta no tiene permisos de administrador.'
-      return
-    }
-
-    // Si el guard de rutas mandó aquí, se vuelve a la página pedida.
-    const destino = typeof route.query.redirect === 'string'
+    // Admin entra al panel de gestión; Público entra a la vista de solo lectura.
+    const redireccion = typeof route.query.redirect === 'string'
       ? route.query.redirect
-      : '/admin'
+      : ''
+
+    const destino = esAdmin.value
+      ? (redireccion.startsWith('/admin') ? redireccion : '/admin/jugadores')
+      : '/consulta/jugadores'
 
     await router.push(destino)
   } catch (e) {
@@ -63,7 +60,7 @@ async function enviar () {
                 <v-icon icon="mdi-shield-account" size="26" />
               </v-avatar>
               <div>
-                <div class="text-h6">Rosters · Admin</div>
+                <div class="text-h6">Rosters · Acceso</div>
                 <div class="text-caption text-medium-emphasis">
                   Meta 3.4 · JWT + cookies + CSRF
                 </div>
@@ -114,10 +111,19 @@ async function enviar () {
 
             <v-divider class="my-5" />
 
-            <div class="text-caption text-medium-emphasis">
-              Cuenta de prueba:
-              <code>admin@esports.local</code> / <code>Admin123!</code>
+            <div class="text-caption text-medium-emphasis mb-3">
+              <div class="mb-1"><strong>Admin:</strong> <code>admin@esports.local</code> / <code>Admin123!</code></div>
+              <div><strong>Público:</strong> <code>publico@esports.local</code> / <code>Publico123!</code></div>
             </div>
+
+            <v-btn
+              variant="text"
+              block
+              prepend-icon="mdi-database-eye-outline"
+              to="/consulta/jugadores"
+            >
+              Consultar sin iniciar sesión
+            </v-btn>
           </v-card-text>
         </v-card>
       </v-col>
