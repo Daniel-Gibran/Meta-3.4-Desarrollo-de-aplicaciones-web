@@ -10,6 +10,7 @@ const { usuario, cerrarSesion } = useAuth()
 const drawer = ref(true)
 const saliendo = ref(false)
 
+// Cierra la sesión en el backend y vuelve al login.
 async function salir () {
   saliendo.value = true
 

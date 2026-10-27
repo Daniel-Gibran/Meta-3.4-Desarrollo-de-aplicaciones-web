@@ -8,4 +8,5 @@ import vuetify from './plugins/vuetify'
 import router from './router'
 import './styles.css'
 
+// Punto de entrada: se registran router y Vuetify antes de montar la app.
 createApp(App).use(router).use(vuetify).mount('#app')

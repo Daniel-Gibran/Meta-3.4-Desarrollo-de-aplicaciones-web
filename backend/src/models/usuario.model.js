@@ -23,15 +23,18 @@ export default class Usuario extends Model {
 
 Usuario.init(
   {
+    // Identificador interno de la cuenta.
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
+    // Nombre que se muestra en la interfaz.
     nombre: {
       type: DataTypes.STRING(100),
       allowNull: false,
     },
+    // Correo con el que se inicia sesión. No puede repetirse.
     email: {
       type: DataTypes.STRING(120),
       allowNull: false,
@@ -42,15 +45,18 @@ Usuario.init(
         },
       },
     },
+    // Hash bcrypt de la contraseña; nunca la contraseña en texto plano.
     password_hash: {
       type: DataTypes.STRING(255),
       allowNull: false,
     },
+    // admin puede escribir; publico solo puede leer.
     rol: {
       type: DataTypes.ENUM('admin', 'publico'),
       allowNull: false,
       defaultValue: 'publico',
     },
+    // Una cuenta desactivada no puede iniciar sesión.
     activo: {
       type: DataTypes.BOOLEAN,
       allowNull: false,

@@ -7,6 +7,7 @@ import vuetify from 'vite-plugin-vuetify'
 export default defineConfig({
   plugins: [vue(), vuetify({ autoImport: true })],
   resolve: {
+    // '@' apunta a src para no escribir rutas relativas largas.
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },

@@ -9,11 +9,13 @@ const route = useRoute()
 const router = useRouter()
 const { esAdmin, iniciarSesion, cerrarSesion } = useAuth()
 
+// Datos del formulario y estado de la petición.
 const email = ref('admin@esports.local')
 const password = ref('Admin123!')
 const cargando = ref(false)
 const error = ref('')
 
+// Toma el mensaje que manda el backend y lo deja listo para mostrar.
 function mensajeDeError (e: unknown): string {
   if (axios.isAxiosError(e)) {
     return e.response?.data?.message ?? 'No se pudo iniciar sesión'
@@ -21,6 +23,7 @@ function mensajeDeError (e: unknown): string {
   return 'Ocurrió un error inesperado'
 }
 
+// Envía las credenciales y, si son correctas, entra al panel.
 async function enviar () {
   error.value = ''
   cargando.value = true
@@ -35,6 +38,7 @@ async function enviar () {
       return
     }
 
+    // Si el guard de rutas mandó aquí, se vuelve a la página pedida.
     const destino = typeof route.query.redirect === 'string'
       ? route.query.redirect
       : '/admin'

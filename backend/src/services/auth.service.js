@@ -21,19 +21,23 @@ const MENSAJE_CREDENCIALES = 'Email o contraseña incorrectos';
  * @throws {ApiError} 400 si faltan datos, 401 si las credenciales no sirven
  */
 export async function autenticar (email, password) {
+  // 1. Ambos datos son obligatorios.
   if (typeof email !== 'string' || typeof password !== 'string' ||
       email.trim() === '' || password === '') {
     throw ApiError.badRequest('El email y la contraseña son obligatorios');
   }
 
+  // 2. Se busca la cuenta por correo, sin distinguir mayúsculas.
   const usuario = await Usuario.findOne({
     where: { email: email.trim().toLowerCase() },
   });
 
+  // 3. Si no existe o está desactivada, no puede entrar.
   if (!usuario || !usuario.activo) {
     throw ApiError.unauthorized(MENSAJE_CREDENCIALES);
   }
 
+  // 4. bcrypt compara la contraseña escrita con el hash guardado.
   const coincide = await bcrypt.compare(password, usuario.password_hash);
 
   if (!coincide) {

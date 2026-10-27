@@ -40,8 +40,10 @@ export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body ?? {};
   const usuario = await authService.autenticar(email, password);
 
+  // Token aleatorio que el frontend reenviará en cada escritura.
   const csrfToken = crypto.randomBytes(32).toString('hex');
 
+  // El JWT guarda la identidad del usuario y el token CSRF.
   const tokenJWT = jwt.sign(
     {
       sub: usuario.id,

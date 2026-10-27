@@ -45,6 +45,7 @@ app.use(cors({
 // ---------------------------------------------------------------------------
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true }));
+// Lee las cookies de la petición (jwt_token y csrf_token).
 app.use(cookieParser());
 
 // ---------------------------------------------------------------------------

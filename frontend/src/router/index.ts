@@ -25,6 +25,7 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const { usuario, esAdmin, restaurarSesion } = useAuth()
 
+  // Al recargar, primero se pregunta al backend si la cookie sigue siendo válida.
   await restaurarSesion()
 
   // El panel es solo para Admin. Si hay sesión pero es rol público, también

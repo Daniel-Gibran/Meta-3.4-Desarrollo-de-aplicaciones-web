@@ -2,8 +2,8 @@ import jwt from 'jsonwebtoken';
 
 import ApiError from '../utils/ApiError.js';
 
+// Estos métodos no modifican datos, así que no necesitan token CSRF.
 const METODOS_SEGUROS = new Set(['GET', 'HEAD', 'OPTIONS']);
-
 /**
  * Autentica la petición a partir de la cookie HttpOnly `jwt_token`.
  *

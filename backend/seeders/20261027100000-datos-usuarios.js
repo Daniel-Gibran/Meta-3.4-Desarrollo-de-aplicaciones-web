@@ -30,6 +30,7 @@ const CUENTAS = [
 export async function up (queryInterface) {
   const ahora = new Date();
 
+  // Cada contraseña se cifra con bcrypt (10 rondas) antes de guardarse.
   const filas = await Promise.all(
     CUENTAS.map(async (cuenta) => ({
       nombre: cuenta.nombre,

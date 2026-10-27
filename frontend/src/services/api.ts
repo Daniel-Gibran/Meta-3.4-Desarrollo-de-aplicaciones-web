@@ -30,6 +30,7 @@ function leerCookie (nombre: string): string | null {
 api.interceptors.request.use((config) => {
   const metodo = (config.method ?? 'get').toLowerCase()
 
+  // Solo las peticiones que modifican datos llevan CSRF.
   if (['post', 'put', 'patch', 'delete'].includes(metodo)) {
     const csrf = leerCookie('csrf_token')
 

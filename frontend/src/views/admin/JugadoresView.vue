@@ -13,6 +13,7 @@ interface Jugador {
   estado: string
 }
 
+// Columnas que mostrará la tabla.
 const headers = [
   { title: 'Nickname', key: 'nickname' },
   { title: 'Nombre real', key: 'nombre_real' },
@@ -21,18 +22,22 @@ const headers = [
   { title: 'Estado', key: 'estado' },
 ]
 
+// Valores permitidos por el catálogo del backend.
 const roles = ['Top', 'Jungle', 'Mid', 'ADC', 'Support']
 const estados = ['activo', 'inactivo']
 
+// Estado de la pantalla: datos, carga y mensaje de error.
 const jugadores = ref<Jugador[]>([])
 const cargando = ref(false)
 const error = ref('')
 
+// Estado del formulario de alta.
 const dialogo = ref(false)
 const guardando = ref(false)
 const snackbar = ref(false)
 const mensajeSnackbar = ref('')
 
+// Datos que se capturan en el formulario.
 const form = reactive({
   nickname: '',
   nombre_real: '',
@@ -41,6 +46,7 @@ const form = reactive({
   estado: 'activo',
 })
 
+// Traduce el error de axios a un mensaje que se pueda mostrar.
 function mensajeDeError (e: unknown): string {
   if (axios.isAxiosError(e)) {
     return e.response?.data?.message ?? 'No se pudo completar la operación'
@@ -48,6 +54,7 @@ function mensajeDeError (e: unknown): string {
   return 'Ocurrió un error inesperado'
 }
 
+// GET público: no necesita sesión ni token CSRF.
 async function listar () {
   cargando.value = true
   error.value = ''
@@ -62,6 +69,7 @@ async function listar () {
   }
 }
 
+// Limpia el formulario y abre el diálogo.
 function abrirDialogo () {
   form.nickname = ''
   form.nombre_real = ''
@@ -71,6 +79,7 @@ function abrirDialogo () {
   dialogo.value = true
 }
 
+// POST protegido. El interceptor de axios agrega la cabecera x-csrf-token.
 async function guardar () {
   if (form.nickname.trim() === '') {
     error.value = 'El nickname es obligatorio'
@@ -89,6 +98,7 @@ async function guardar () {
       estado: form.estado,
     })
 
+    // Si el backend responde 201, se cierra el diálogo y se recarga la tabla.
     dialogo.value = false
     mensajeSnackbar.value = 'Jugador creado correctamente'
     snackbar.value = true
@@ -100,6 +110,7 @@ async function guardar () {
   }
 }
 
+// Al entrar a la pantalla se carga la lista.
 onMounted(listar)
 </script>
 
@@ -119,17 +130,6 @@ onMounted(listar)
         Nuevo jugador
       </v-btn>
     </div>
-
-    <v-alert
-      type="info"
-      variant="tonal"
-      density="compact"
-      class="mb-4"
-    >
-      Al guardar, el navegador envía la cookie <code>jwt_token</code> (HttpOnly)
-      y la cabecera <code>x-csrf-token</code>. Sin ambas, el backend responde
-      401 o 403.
-    </v-alert>
 
     <v-alert
       v-if="error"
