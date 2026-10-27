@@ -80,8 +80,10 @@ export const login = asyncHandler(async (req, res) => {
  * Elimina ambas cookies. Requiere sesión y token CSRF válidos.
  */
 export const logout = asyncHandler(async (_req, res) => {
-  const base = opcionesBase();
+  const { maxAge, ...base } = opcionesBase();
 
+  // No se incluye maxAge al borrar: si se enviara, el navegador podría
+  // interpretar que la cookie debe seguir viva durante ese tiempo.
   res.clearCookie(COOKIE_JWT, { ...base, httpOnly: true });
   res.clearCookie(COOKIE_CSRF, { ...base, httpOnly: false });
 
