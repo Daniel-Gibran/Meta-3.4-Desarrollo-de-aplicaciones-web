@@ -63,16 +63,19 @@ app.use((req, res, next) => {
 });
 
 // ---------------------------------------------------------------------------
-// Índice del API: qué hay y dónde está la documentación
+// Índice del API: qué hay, cómo se autentica y qué rutas existen
 // ---------------------------------------------------------------------------
 app.get('/', (_req, res) => {
   res.status(200).json({
     success: true,
     name: 'API de Jugadores y Rosters',
     version: '1.0.0',
-    documentacion: {
-      swaggerUI: '/docs',
-      openapi: '/docs/openapi.yaml',
+    autenticacion: {
+      login: 'POST /api/v1/auth/login',
+      logout: 'POST /api/v1/auth/logout',
+      sesion: 'GET /api/v1/auth/me',
+      cookies: ['jwt_token (HttpOnly)', 'csrf_token (legible)'],
+      cabeceraCSRF: 'x-csrf-token (obligatoria en POST, PUT y DELETE)',
     },
     reglasNegocio: {
       RN01: 'El nickname de un jugador debe ser único',
@@ -82,6 +85,11 @@ app.get('/', (_req, res) => {
       RN05: 'Al eliminar un roster, los jugadores permanecen en el sistema',
     },
     endpoints: {
+      auth: [
+        'POST   /api/v1/auth/login',
+        'POST   /api/v1/auth/logout',
+        'GET    /api/v1/auth/me',
+      ],
       jugadores: [
         'GET    /api/v1/jugadores',
         'GET    /api/v1/jugadores/:id',
