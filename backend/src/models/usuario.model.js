@@ -46,9 +46,22 @@ Usuario.init(
       },
     },
     // Hash bcrypt de la contraseña; nunca la contraseña en texto plano.
+    // Es NULL en las cuentas que solo usan Google OAuth.
     password_hash: {
       type: DataTypes.STRING(255),
-      allowNull: false,
+      allowNull: true,
+    },
+    // Identificador de la cuenta de Google (claim `sub`). NULL en las cuentas
+    // que se registraron con correo y contraseña.
+    google_id: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      unique: true,
+    },
+    // URL de la foto de perfil que entrega Google.
+    foto: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
     },
     // admin puede escribir; publico solo puede leer.
     rol: {

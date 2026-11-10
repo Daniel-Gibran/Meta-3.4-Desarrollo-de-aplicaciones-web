@@ -38,6 +38,13 @@ export async function autenticar (email, password) {
   }
 
   // 4. bcrypt compara la contraseña escrita con el hash guardado.
+  // Las cuentas creadas con Google no tienen contraseña local.
+  if (!usuario.password_hash) {
+    throw ApiError.unauthorized(
+      'Esta cuenta usa Google. Inicia sesión con el botón de Google.'
+    );
+  }
+
   const coincide = await bcrypt.compare(password, usuario.password_hash);
 
   if (!coincide) {

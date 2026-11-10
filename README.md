@@ -249,12 +249,12 @@ cookies.
 Meta3.4/
 ├── backend/
 │   ├── src/
-│   │   ├── controllers/       # auth, jugadores, rosters, asignaciones
-│   │   ├── services/          # reglas de negocio
+│   │   ├── controllers/       # auth, googleAuth, jugadores, rosters, asignaciones
+│   │   ├── services/          # reglas de negocio (incluye googleAuth.service)
 │   │   ├── middlewares/       # auth.middleware, errorHandler, notFound
-│   │   ├── models/            # Sequelize (incluye Usuario)
+│   │   ├── models/            # Sequelize (incluye Usuario con google_id)
 │   │   ├── routes/            # endpoints y protección por rol
-│   │   └── utils/             # ApiError, validaciones, serialización
+│   │   └── utils/             # ApiError, sesion, validaciones, serialización
 │   ├── migrations/            # tablas, incluida usuarios
 │   ├── seeders/               # datos iniciales y cuentas
 │   └── .env.example
@@ -287,3 +287,72 @@ Meta3.4/
 - En producción se debe usar HTTPS, `Secure` en cookies y secretos fuertes.
 - Las lecturas de la API son públicas por diseño; las escrituras son solo
   Admin.
+
+---
+
+## 10. Meta 4.1 — Autenticación con Google OAuth 2.0
+
+Esta rama (`google-auth`) agrega el inicio de sesión con Google sobre la
+aplicación de la Meta 3.4. El login local sigue funcionando; Google es una
+segunda puerta de entrada.
+
+### Rutas
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/v1/auth/google/login` | Genera el `state`, lo guarda en una cookie y redirige a Google. |
+| GET | `/api/v1/auth/google/callback` | Valida el `state`, canjea el `code`, registra o recupera al usuario y crea las cookies de sesión. |
+
+El callback termina en `CLIENT_URL/login?oauth=ok` (o `cancelado`, `state`,
+`error`, `inactivo`). El frontend lee ese parámetro y muestra el resultado.
+
+### Flujo
+
+1. El usuario pulsa **Continuar con Google** en `LoginView`.
+2. El backend genera un `state` aleatorio y lo guarda en la cookie HttpOnly
+   `oauth_state` (10 minutos).
+3. Google muestra la pantalla de consentimiento.
+4. Google regresa al callback con `code` y `state`.
+5. El backend compara el `state` con la cookie, canjea el `code` por tokens y
+   consulta el perfil (`google.oauth2('v2').userinfo.get()`).
+6. Si el correo no existe en `usuarios`, se crea con rol `publico` y
+   `password_hash = NULL`. Si existe, se vincula con `google_id`.
+7. Se emiten las mismas cookies que el login local (`jwt_token` HttpOnly y
+   `csrf_token` legible) y se vuelve al frontend.
+
+### Variables de entorno
+
+```env
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+GOOGLE_REDIRECT_URI=http://localhost:3000/api/v1/auth/google/callback
+```
+
+### Cómo crear las credenciales en Google Cloud
+
+1. Entra a <https://console.cloud.google.com/> y crea un proyecto.
+2. **APIs y servicios → Biblioteca**: habilita **Google Identity** si aparece.
+3. **APIs y servicios → Pantalla de consentimiento de OAuth**:
+   - Tipo: **Externo**.
+   - Nombre de la aplicación, correo de soporte y correo del desarrollador.
+   - En **Usuarios de prueba**, agrega tu correo
+     `daniel.alvarez26@uabc.edu.mx`.
+4. **APIs y servicios → Credenciales → Crear credenciales → ID de cliente de
+   OAuth**:
+   - Tipo: **Aplicación web**.
+   - **URI de redirección autorizado**:
+     `http://localhost:3000/api/v1/auth/google/callback`
+5. Copia **Client ID** y **Client secret** al `.env` del backend.
+6. Ejecuta la migración y levanta el servidor:
+
+```bash
+npm run migrate
+npm run dev
+```
+
+> Las cuentas nuevas de Google entran como `publico`. Para probar el panel
+> Admin con una cuenta de Google, cambia su rol en MySQL:
+>
+> ```sql
+> UPDATE usuarios SET rol = 'admin' WHERE email = 'tu-correo@gmail.com';
+> ```

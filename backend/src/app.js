@@ -90,6 +90,8 @@ app.get('/', (_req, res) => {
         'POST   /api/v1/auth/login',
         'POST   /api/v1/auth/logout',
         'GET    /api/v1/auth/me',
+        'GET    /api/v1/auth/google/login',
+        'GET    /api/v1/auth/google/callback',
       ],
       jugadores: [
         'GET    /api/v1/jugadores',

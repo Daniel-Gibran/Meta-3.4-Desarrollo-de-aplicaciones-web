@@ -1,19 +1,49 @@
 <script setup lang="ts">
 import axios from 'axios'
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAuth } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
-const { esAdmin, iniciarSesion } = useAuth()
+const { esAdmin, iniciarSesion, restaurarSesion, usuario } = useAuth()
+
+// Meta 4.1: el backend redirige aquí con ?oauth=ok|error|cancelado|state|inactivo
+const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api/v1'
+const urlGoogle = `${apiUrl}/auth/google/login`
+
+const MENSAJES_OAUTH: Record<string, string> = {
+  cancelado: 'Cancelaste el inicio de sesión con Google.',
+  state: 'La sesión de Google expiró. Inténtalo de nuevo.',
+  error: 'No se pudo completar el inicio de sesión con Google.',
+  inactivo: 'La cuenta está desactivada.',
+}
 
 // Datos del formulario y estado de la petición.
 const email = ref('admin@esports.local')
 const password = ref('Admin123!')
 const cargando = ref(false)
 const error = ref('')
+
+// Al volver de Google, el backend ya dejó las cookies de sesión. Solo hay que
+// recuperar el usuario y entrar al panel que le corresponde.
+onMounted(async () => {
+  const resultado = route.query.oauth
+
+  if (typeof resultado !== 'string') return
+
+  if (resultado === 'ok') {
+    await restaurarSesion()
+
+    if (usuario.value) {
+      await router.replace(esAdmin.value ? '/admin/jugadores' : '/consulta/jugadores')
+    }
+    return
+  }
+
+  error.value = MENSAJES_OAUTH[resultado] ?? 'No se pudo iniciar sesión con Google.'
+})
 
 // Toma el mensaje que manda el backend y lo deja listo para mostrar.
 function mensajeDeError (e: unknown): string {
@@ -62,7 +92,7 @@ async function enviar () {
               <div>
                 <div class="text-h6">Rosters · Acceso</div>
                 <div class="text-caption text-medium-emphasis">
-                  Meta 3.4 · JWT + cookies + CSRF
+                  Meta 4.1 · JWT + cookies + CSRF + Google OAuth
                 </div>
               </div>
             </div>
@@ -110,6 +140,16 @@ async function enviar () {
             </v-form>
 
             <v-divider class="my-5" />
+
+            <v-btn
+              block
+              variant="outlined"
+              prepend-icon="mdi-google"
+              :href="urlGoogle"
+              class="mb-2"
+            >
+              Continuar con Google
+            </v-btn>
 
             <div class="text-caption text-medium-emphasis mb-3">
               <div class="mb-1"><strong>Admin:</strong> <code>admin@esports.local</code> / <code>Admin123!</code></div>
