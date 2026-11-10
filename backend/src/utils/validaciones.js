@@ -37,13 +37,13 @@ export function validarJugador (cuerpo) {
     errores.estado = `El estado debe ser uno de: ${ESTADOS.join(', ')}`;
   }
 
-  // `nombre_real` y `pais` son OPCIONALES: si no llegan, se guardan como null.
-  // Solo se rechazan cuando el cliente los manda pero llegan vacíos, porque eso
-  // sí es un dato mal formado y no un campo opcional ausente.
-  if (datos.nombre_real !== undefined && esTextoVacio(datos.nombre_real)) {
+  // `nombre_real` y `pais` son OPCIONALES: si no llegan (undefined) o llegan en
+  // null, se guardan como null. Solo se rechazan cuando el cliente manda un
+  // texto vacío, porque eso sí es un dato mal formado y no un campo ausente.
+  if (datos.nombre_real !== undefined && datos.nombre_real !== null && esTextoVacio(datos.nombre_real)) {
     errores.nombre_real = 'El nombre real no puede estar vacío';
   }
-  if (datos.pais !== undefined && esTextoVacio(datos.pais)) {
+  if (datos.pais !== undefined && datos.pais !== null && esTextoVacio(datos.pais)) {
     errores.pais = 'El país no puede estar vacío';
   }
   if (datos.nickname !== undefined && String(datos.nickname).length > 50) {
