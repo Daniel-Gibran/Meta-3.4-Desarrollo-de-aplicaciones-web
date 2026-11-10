@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "@mdi/font": "^7.4.47",
@@ -16,6 +18,7 @@
     "vuetify": "^3.7.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^5.2.1",
     "sass": "^1.83.0",

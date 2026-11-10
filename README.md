@@ -268,6 +268,8 @@ Meta3.4/
 │       ├── stores/            # estado de sesión
 │       ├── views/             # Login, Jugadores, Rosters, RosterDetail
 │       └── utils/             # catálogos
+│   ├── e2e/                   # suite de Playwright (Meta 4.2)
+│   └── playwright.config.ts
 ├── tools/e2e.mjs              # prueba de humo del backend
 └── README.md
 ```
@@ -287,3 +289,68 @@ Meta3.4/
 - En producción se debe usar HTTPS, `Secure` en cookies y secretos fuertes.
 - Las lecturas de la API son públicas por diseño; las escrituras son solo
   Admin.
+
+---
+
+## 10. Meta 4.2 ΓÇö Pruebas e2e con Playwright
+
+La suite vive en `frontend/e2e/` y usa `@playwright/test`. Cubre el login local,
+las funciones del rol P├║blico y todo el CRUD del panel Admin, incluida la regla
+RN-03.
+
+### Requisitos
+
+- MySQL con la base `esports` migrada y sembrada.
+- Backend y frontend se levantan solos (`webServer` de Playwright); si ya est├ín
+  corriendo, los reutiliza.
+
+### Ejecutar
+
+```bash
+cd frontend
+npx playwright install chromium   # solo la primera vez
+npm run test:e2e
+```
+
+Para ver la interfaz de Playwright:
+
+```bash
+npm run test:e2e:ui
+```
+
+### Proyectos
+
+| Proyecto | Qu├⌐ prueba |
+|----------|------------|
+| `setup` | Inicia sesi├│n como Admin y guarda las cookies en `playwright/.auth/admin.json`. |
+| `auth` | Login local, login inv├ílido, logout y protecci├│n CSRF. |
+| `admin` | CRUD de jugadores, CRUD de rosters, detalle y asignaciones. |
+| `publico` | Consulta sin sesi├│n, rol P├║blico y bloqueo del panel Admin. |
+
+### Cobertura
+
+| Funcionalidad | Prueba |
+|---------------|--------|
+| Login Admin | `login.spec.ts` |
+| Login P├║blico | `login.spec.ts` |
+| Login inv├ílido | `login.spec.ts` |
+| Logout | `login.spec.ts` |
+| JWT HttpOnly + CSRF | `login.spec.ts` |
+| Crear jugador | `admin-jugadores.spec.ts` |
+| Editar jugador | `admin-jugadores.spec.ts` |
+| Eliminar jugador | `admin-jugadores.spec.ts` |
+| Buscar / filtrar jugadores | `admin-jugadores.spec.ts` |
+| Crear roster | `admin-rosters.spec.ts` |
+| Editar roster | `admin-rosters.spec.ts` |
+| Eliminar roster | `admin-rosters.spec.ts` |
+| Filtrar rosters | `admin-rosters.spec.ts` |
+| Detalle de roster | `admin-roster-detalle.spec.ts` |
+| Asignar jugador | `admin-roster-detalle.spec.ts` |
+| Cambiar Titular/Suplente | `admin-roster-detalle.spec.ts` |
+| Quitar jugador | `admin-roster-detalle.spec.ts` |
+| RN-03 (rol duplicado) | `admin-roster-detalle.spec.ts` |
+| Consulta p├║blica | `publico-consulta.spec.ts` |
+| Bloqueo del panel Admin | `publico-consulta.spec.ts` |
+
+Cada prueba crea sus propios jugadores y rosters con un sufijo ├║nico y los
+elimina al terminar, para no ensuciar la base de datos.
